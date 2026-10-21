@@ -6,21 +6,95 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dinamikus Mermaid Generátor</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        textarea { width: 100%; max-width: 600px; font-family: monospace; font-size: 14px; }
-        #mermaid_div { margin-top: 20px; }
-        .error-msg { color: #d32f2f; background: #ffebee; padding: 12px; border-radius: 4px; font-family: monospace; white-space: pre-wrap; }
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        textarea {
+            width: 100%;
+            max-width: 600px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        #mermaid_div {
+            margin-top: 20px;
+        }
+
+        .error-msg {
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 12px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        pre {
+            font-family: 'Courier New', Courier, monospace;
+            background-color: rgb(219, 219, 219);
+            margin-left: 3em;
+            margin-right: 3em;
+            padding-top: 0.5em;
+            padding-right: 1em;
+            padding-left: 1em;
+            padding-bottom: 0.5em;
+            width: 60%;
+        }
     </style>
+
 </head>
 
 <body>
+    <div>
+        <textarea name="code" id="mermaid_code" rows="8" placeholder="Írd ide a mermaid kódot..."></textarea>
+        <div id="mermaid_div"></div>
+        <h3>Példakódok</h3>
+        <pre>
+graph TD;
+    A-->B;
+    A-->C;
+    B-->D;
+    C-->D;
+        </pre>
+        <hr>
+        <pre>
+sequenceDiagram
+    participant Alice
+    participant Bob
+    Alice->>John: Hello John, how are you?
+    loop HealthCheck
+        John->>John: Fight against hypochondria
+    end
+    Note right of John: Rational thoughts prevail!
+    John-->>Alice: Great!
+    John->>Bob: How about you?
+    Bob-->>John: Jolly good!
+        </pre>
+        <hr>
+        <pre>
+classDiagram
+    Class01 <|-- AveryLongClass : Cool
+    Class03 *-- Class04
+    Class05 o-- Class06
+    Class07 .. Class08
+    Class09 --> C2 : Where am i?
+    Class09 --* C3
+    Class09 --|> Class07
+    Class07 : equals()
+    Class07 : Object[] elementData
+    Class01 : size()
+    Class01 : int chimp
+    Class01 : int gorilla
+    Class08 <--> C2: Cool label
+        </pre>
 
-    <textarea name="code" id="mermaid_code" rows="8" placeholder="Írd ide a mermaid kódot..."></textarea>
-    <div id="mermaid_div"></div>
+    </div>
 
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs';
-        
+
         mermaid.initialize({ startOnLoad: false });
 
         const input = document.querySelector('#mermaid_code');
@@ -31,7 +105,7 @@
 
         async function updateMermaid() {
             const code = input.value;
-            
+
             if (!code.trim()) {
                 mermaidDiv.innerHTML = '';
                 return;
@@ -45,7 +119,7 @@
                 const id = 'mermaid-' + Math.floor(Math.random() * 100000);
                 const { svg } = await mermaid.render(id, code);
                 mermaidDiv.innerHTML = svg;
-                
+
             } catch (error) {
                 // 3. Kiírjuk a pontos hibaüzenetet, amit a Mermaid (vagy a parse) adott
                 const errorMessage = error.str || error.message || error;

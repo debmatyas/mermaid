@@ -12,10 +12,11 @@
         }
 
         textarea {
-            width: 100%;
-            max-width: 60em;
-            min-height: 30em;
+            
+            min-width: 60em;
+            max-width: 100%;
             max-height: 60em;
+            min-height: 20em;
             font-family: monospace;
             font-size: 14px;
         }
@@ -44,6 +45,21 @@
             padding-bottom: 0.5em;
             width: 60%;
         }
+
+        .try-btn {
+            margin-left: 3em;
+            padding: 4px 10px;
+            cursor: pointer;
+            background-color: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .try-btn:hover {
+            background-color: #4338ca;
+        }
     </style>
 </head>
 
@@ -51,7 +67,10 @@
     <div>
         <textarea name="code" id="mermaid_code" rows="8" placeholder="Írd ide a mermaid kódot..."></textarea>
         <div id="mermaid_div"></div>
+        
         <h3>Példakódok</h3>
+        
+        <button class="try-btn">Kipróbál</button>
         <pre>
 graph TD;
     A-->B;
@@ -70,6 +89,8 @@ graph TD;
     class D success;
         </pre>
         <hr>
+        
+        <button class="try-btn">Kipróbál</button>
         <pre>
 sequenceDiagram
     participant Alice
@@ -84,6 +105,8 @@ sequenceDiagram
     Bob-->>John: Jolly good!
         </pre>
         <hr>
+        
+        <button class="try-btn">Kipróbál</button>
         <pre>
 classDiagram
     Class01 <|-- AveryLongClass : Cool
@@ -145,11 +168,9 @@ classDiagram
                 const value = input.value;
 
                 if (e.shiftKey) {
-                    // Shift + Tab: sor elejéről legfeljebb 4 szóköz törlése
                     const lineStart = value.lastIndexOf('\n', start - 1) + 1;
                     const lineSlice = value.substring(lineStart, start);
                     
-                    // Megszámoljuk, hány szóköz van a sor elején a kurzorig (max 4)
                     let spacesToRemove = 0;
                     while (spacesToRemove < 4 && lineSlice[spacesToRemove] === ' ') {
                         spacesToRemove++;
@@ -161,13 +182,24 @@ classDiagram
                         input.selectionEnd = Math.max(lineStart, end - spacesToRemove);
                     }
                 } else {
-                    // Sima Tab: 4 szóköz beszúrása
                     input.value = value.substring(0, start) + "    " + value.substring(end);
                     input.selectionStart = input.selectionEnd = start + 4;
                 }
 
                 updateMermaid();
             }
+        });
+
+        // Kipróbál gombok eseménykezelése
+        document.querySelectorAll('.try-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const pre = button.nextElementSibling;
+                if (pre && pre.tagName === 'PRE') {
+                    input.value = pre.textContent.trim();
+                    updateMermaid();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
         });
     </script>
 </body>

@@ -334,6 +334,160 @@ classDiagram
     Class08 <--> C2: Cool label
     </pre>
 
+    <button class="try-btn">Kipróbál</button>
+    <pre>
+graph TD
+    %% 1. KLIENS RÉTEG & EDGE
+    subgraph ClientLayer ["1. Kliens & Edge Réteg"]
+        WebApp[Web Alkalmazás - React SPA]
+        MobileApp[Mobil Alkalmazás - Native iOS/Android]
+        AdminApp[Adminisztrációs Vezérlőpult]
+        IoTDevices[IoT Raktári Szenzorok]
+        
+        CDN[Cloudflare CDN / Edge Cache]
+        WAF[Web Application Firewall & DDoS]
+        APIGateway[API Gateway / Kong]
+    end
+
+    %% 2. BIZTONSÁG & AUTH
+    subgraph SecurityLayer ["2. Biztonság & Identitás"]
+        AuthService[Auth / IAM Service - Keycloak]
+        TokenStore[(Redis Token Store)]
+        OAuthProvider[OAuth2 / OIDC Google/Apple]
+    end
+
+    %% 3. ALKALMAZÁS / MIKROSZOLGÁLTATÁSOK
+    subgraph Microservices ["3. Mikroszolgáltatások Magja"]
+        direction TB
+        subgraph UserDomain ["Felhasználói Domén"]
+            UserProfile[User Profile Service]
+            UserPref[User Preferences Service]
+        end
+
+        subgraph CatalogDomain ["Katalógus Domén"]
+            ProductCatalog[Product Catalog Service]
+            SearchService[ElasticSearch Indexer]
+            ReviewService[Product Reviews & Ratings]
+        end
+
+        subgraph OrderDomain ["Rendelési & Fizetési Domén"]
+            OrderService[Order Orchestrator Service]
+            CartService[Shopping Cart Service]
+            CheckoutService[Checkout Flow Service]
+            PaymentProcessor[Payment Processing Service]
+        end
+
+        subgraph LogisticsDomain ["Logisztika & Raktár Domén"]
+            InventoryService[Inventory Stock Service]
+            WarehouseManager[Warehouse Management API]
+            ShippingService[Shipping & Fulfillment]
+        end
+
+        subgraph SupportDomain ["Értesítési & Egyéb Szolgáltatások"]
+            NotificationService[Notification Engine]
+            RecommendationAI[AI Recommendation Engine]
+            AnalyticsCollector[Real-time Analytics Collector]
+        end
+    end
+
+    %% 4. ÜZENETKEZELÉS & STREAMING
+    subgraph MessagingLayer ["4. Eseményvezérelt Réteg (Kafka)"]
+        KafkaCluster((Apache Kafka Cluster))
+        SchemaRegistry[Confluent Schema Registry]
+    end
+
+    %% 5. ADATBÁZISOK ÉS TÁROLÓK
+    subgraph StorageLayer ["5. Adattárolás & Cache Réteg"]
+        direction LR
+        UserDB[(User PostgreSQL DB)]
+        ProductDB[(Product MongoDB)]
+        OrderDB[(Order PostgreSQL DB)]
+        InventoryDB[(Inventory PostgreSQL DB)]
+        AnalyticsDB[(ClickHouse BigData DB)]
+        RedisCache[(Redis Distributed Cache)]
+        S3Bucket[(AWS S3 Asset Storage)]
+    end
+
+    %% 6. KÜLSŐ INTEGRÁCIÓK
+    subgraph ExternalIntegrations ["6. Külső Partnerek & Integrációk"]
+        StripeGateway[Stripe & PayPal API]
+        PostaAPI[Magyar Posta & GLS API]
+        TwilioSMS[Twilio SMS Gateway]
+        SendGridEmail[SendGrid Email API]
+        OpenAIAPI[OpenAI LLM API]
+    end
+
+    %% Kötések: Kliensek -> Edge
+    WebApp --> CDN
+    MobileApp --> CDN
+    AdminApp --> WAF
+    IoTDevices --> WAF
+    CDN --> WAF
+    WAF --> APIGateway
+
+    %% Kötések: Gateway -> Auth & Services
+    APIGateway --> AuthService
+    APIGateway --> UserProfile
+    APIGateway --> ProductCatalog
+    APIGateway --> CartService
+    APIGateway --> OrderService
+    APIGateway --> SearchService
+    APIGateway --> AnalyticsCollector
+
+    AuthService --> TokenStore
+    AuthService --> OAuthProvider
+
+    %% Szolgáltatások belső kommunikációja és Adatbázisok
+    UserProfile --> UserDB
+    UserPref --> UserDB
+    ProductCatalog --> ProductDB
+    ProductCatalog --> S3Bucket
+    SearchService --> ProductDB
+    ReviewService --> ProductDB
+    
+    CartService --> RedisCache
+    OrderService --> OrderDB
+    OrderService --> RedisCache
+    CheckoutService --> PaymentProcessor
+    PaymentProcessor --> StripeGateway
+
+    InventoryService --> InventoryDB
+    WarehouseManager --> InventoryDB
+    ShippingService --> PostaAPI
+
+    RecommendationAI --> OpenAIAPI
+    RecommendationAI --> ProductDB
+
+    NotificationService --> TwilioSMS
+    NotificationService --> SendGridEmail
+
+    %% Kafka Eseményvezérelt kötések (Pub/Sub)
+    OrderService -.->|OrderPlaced Event| KafkaCluster
+    PaymentProcessor -.->|PaymentSuccess Event| KafkaCluster
+    InventoryService -.->|StockUpdated Event| KafkaCluster
+    
+    KafkaCluster -.->|Consume Order| InventoryService
+    KafkaCluster -.->|Consume Payment| ShippingService
+    KafkaCluster -.->|Consume Events| NotificationService
+    KafkaCluster -.->|Stream Telemetry| AnalyticsCollector
+    AnalyticsCollector --> AnalyticsDB
+
+    %% Stílus definíciók az egységes megjelenítéshez
+    classDef clientStyle fill:#3b82f6,stroke:#1d4ed8,stroke-width:2px,color:#fff;
+    classDef securityStyle fill:#8b5cf6,stroke:#6d28d9,stroke-width:2px,color:#fff;
+    classDef serviceStyle fill:#10b981,stroke:#047857,stroke-width:2px,color:#fff;
+    classDef kafkaStyle fill:#6366f1,stroke:#4338ca,stroke-width:2px,color:#fff;
+    classDef dbStyle fill:#f59e0b,stroke:#b45309,stroke-width:2px,color:#fff;
+    classDef extStyle fill:#ec4899,stroke:#be185d,stroke-width:2px,color:#fff;
+
+    class WebApp,MobileApp,AdminApp,IoTDevices,CDN,WAF,APIGateway clientStyle;
+    class AuthService,TokenStore,OAuthProvider securityStyle;
+    class UserProfile,UserPref,ProductCatalog,SearchService,ReviewService,OrderService,CartService,CheckoutService,PaymentProcessor,InventoryService,WarehouseManager,ShippingService,NotificationService,RecommendationAI,AnalyticsCollector serviceStyle;
+    class KafkaCluster,SchemaRegistry kafkaStyle;
+    class UserDB,ProductDB,OrderDB,InventoryDB,AnalyticsDB,RedisCache,S3Bucket dbStyle;
+    class StripeGateway,PostaAPI,TwilioSMS,SendGridEmail,OpenAIAPI extStyle;
+    </pre>
+
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs';
 

@@ -333,6 +333,110 @@ classDiagram
     Class01 : int gorilla
     Class08 <--> C2: Cool label
     </pre>
+    <hr>
+
+    <button class="try-btn">Kipróbál</button>
+    <pre>
+flowchart LR
+
+Citizen["kérelmező állampolgár"]
+
+subgraph Channel["Beadási csatornák"]
+    direction TB
+
+    P1["OkmányApp"]
+    P2["RKTA alkalmazás"]
+    P3["DÁP mobil App"]
+    P4["SZÜF"]
+    P5["KIOSK alkalmazás"]
+    P6["KAB alkalmazás"]
+    P7["BŰNYH ügyfélszolgálaton"]
+    P8["Postai úton"]
+end
+
+Citizen --> P1
+Citizen --> P2
+Citizen --> P3
+Citizen --> P4
+Citizen --> P5
+Citizen --> P6
+Citizen --> P7
+Citizen --> P8
+
+P1 --> WS1["Érkeztető WS"]
+P2 --> WS1
+
+P3 --> W1["web-igény befogadó"]
+P4 --> W1
+
+P5 --> WS2["Kérelmekezelő WS"]
+P6 --> WS2
+
+W1 --> W2["web-igény feldolgozó"]
+W2 --> W3["web-kérelemkezelő"]
+
+NSZA(("NSZA"))
+SZL(("SZL REPLIKA"))
+
+W3 --> NSZA
+WS2 --> SZL
+
+E1["ERHAB (BŰNYH) igénylés kezelő"]
+E2["ERHAB ANY igénylés kezelő"]
+
+P7 --> E1
+P8 --> E2
+
+E1 --> SZL
+E2 --> SZL
+
+PROFILE["HEB profilkezelő"]
+
+NSZA --> PROFILE
+SZL --> PROFILE
+
+REG[(Bűnügyi és foglalmi nyilvántartás)]
+
+PROFILE --> REG
+
+DHEB{{dHEB}}
+HEB{{HEB}}
+
+REG --> DHEB
+REG --> HEB
+
+DHEB --> DHEB_OK["nem szerepel BŰNYH-ben vagy foglalomban"]
+
+HEB --> HEB_OK["nem szerepel BŰNYH-ben vagy foglalomban"]
+HEB --> HEB_BAD["szerepel BŰNYH-ben vagy foglalomban"]
+
+DHEB_OK --> D1["dHEB kiadható"]
+
+D1 --> D2["HEB legacy-karb"]
+D2 --> D3["HEB megszemélyesítő"]
+D3 --> D4["HEB minőségellenőrző"]
+D4 --> D5["HEB kézbesítő"]
+
+HEB_BAD --> DEC["ERHAB (BŰNYH) elbíráló felület"]
+
+DEC --> NEG["megtagadó / felfüggesztő / hiánypótló"]
+
+DEC --> DOC["irat összeállítás + PDF generálás + ÁVDH"]
+
+DOC --> BNYH["BŰNYH nyomtatás és kézbesítés"]
+DOC --> ANY["ANY nyomtatás és kézbesítés"]
+
+BNYH --> PROD["ERHAB megszemélyesítés / gyártás"]
+ANY --> PROD
+
+PROD --> PERSON["személyes átadás"]
+PROD --> POST["postázás és tértivevény kezelés"]
+
+PERSON --> STATUS["ERHAB státuszállítás"]
+POST --> STATUS
+
+    </pre>
+    <hr>
 
     <button class="try-btn">Kipróbál</button>
     <pre>

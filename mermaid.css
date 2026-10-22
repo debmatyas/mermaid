@@ -1,0 +1,172 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f8fafc;
+    color: #1e293b;
+    margin: 0;
+    padding: 20px;
+    line-height: 1.5;
+}
+
+/* Fő kétoszlopos elrendezés */
+.workspace {
+    display: flex;
+    gap: 20px;
+    height: 70vh;
+    min-height: 450px;
+    margin-bottom: 30px;
+}
+
+.editor-container,
+.preview-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.pane-title {
+    background: #f1f5f9;
+    padding: 10px 16px;
+    font-weight: 600;
+    font-size: 14px;
+    border-bottom: 1px solid #cbd5e1;
+    color: #475569;
+}
+
+/* Szövegszerkesztő területe */
+textarea {
+    width: 100%;
+    height: 100%;
+    flex: 1;
+    border: none;
+    padding: 16px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+    background-color: #ffffff;
+}
+
+textarea:focus {
+    background-color: #fafafa;
+}
+
+/* SVG megjelenítő konténer */
+#mermaid_div {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: #ffffff;
+}
+
+/* Az SVG-nek ki kell töltenie a teljes helyet a Pan-Zoomhoz */
+#mermaid_div svg {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+}
+
+/* Pan Zoom kezelőgombok a jobb alsó sarokban */
+.zoom-controls {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    display: flex;
+    gap: 6px;
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 4px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.zoom-btn {
+    width: 32px;
+    height: 32px;
+    border: 1px solid #cbd5e1;
+    background: white;
+    color: #334155;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+}
+
+.zoom-btn:hover {
+    background: #f1f5f9;
+    color: #4f46e5;
+    border-color: #94a3b8;
+}
+
+/* Hibaüzenet doboz */
+.error-msg {
+    color: #b91c1c;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    padding: 16px;
+    margin: 16px;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    white-space: pre-wrap;
+    font-size: 13px;
+}
+
+/* Példakódok szekció */
+h3 {
+    margin-top: 20px;
+    margin-bottom: 16px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    border-bottom: 2px solid #e2e8f0;
+    padding-bottom: 8px;
+}
+
+pre {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    background-color: #1e293b;
+    color: #e2e8f0;
+    margin: 8px 0 24px 0;
+    padding: 16px;
+    border-radius: 8px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.try-btn {
+    padding: 6px 14px;
+    cursor: pointer;
+    background-color: #4f46e5;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.try-btn:hover {
+    background-color: #4338ca;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #e2e8f0;
+    margin: 24px 0;
+}

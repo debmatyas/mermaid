@@ -1,77 +1,287 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hu">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dinamikus Mermaid Generátor</title>
+    <!-- SVG Pan Zoom könyvtár a nagyításhoz és mozgatáshoz -->
+    <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            margin: 0;
             padding: 20px;
+            line-height: 1.5;
         }
 
-        textarea {
-            
-            min-width: 60em;
-            max-width: 100%;
-            max-height: 60em;
-            min-height: 20em;
-            font-family: monospace;
+        /* Fő kétoszlopos elrendezés */
+        .workspace {
+            display: flex;
+            gap: 20px;
+            height: 70vh;
+            min-height: 450px;
+            margin-bottom: 30px;
+            margin-top: 2em;
+        }
+
+        .editor-container, .preview-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .pane-title {
+            background: #f1f5f9;
+            padding: 10px 16px;
+            font-weight: 600;
             font-size: 14px;
+            border-bottom: 1px solid #cbd5e1;
+            color: #475569;
         }
 
-        #mermaid_div {
-            margin-top: 20px;
+        /* Szerkesztő és sorszámozó konténer */
+        .editor-wrapper {
+            display: flex;
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background-color: #ffffff;
         }
 
-        .error-msg {
-            color: #d32f2f;
-            background: #ffebee;
-            padding: 12px;
-            border-radius: 4px;
-            font-family: monospace;
+        /* Sorszámok sávja */
+        .line-numbers {
+            width: 45px;
+            padding: 16px 4px;
+            background-color: #f8fafc;
+            color: #94a3b8;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            text-align: right;
+            user-select: none;
+            overflow: hidden;
+            border-right: 1px solid #e2e8f0;
+            white-space: pre;
+            z-index: 2;
+        }
+
+        /* A szerkesztő belső területe a kiemeléshez és textarea-hoz */
+        .input-area-wrapper {
+            position: relative;
+            flex: 1;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Háttér réteg a szókiemelésekhez */
+        .highlight-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 16px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 14px;
+            line-height: 1.5;
             white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: hidden;
+            pointer-events: none;
+            color: transparent;
+            z-index: 1;
+        }
+
+        /* Szókiemelés stílusa */
+        .highlight {
+            background-color: #fde047;
+            color: transparent;
+            border-radius: 2px;
+        }
+
+        /* Szövegszerkesztő területe */
+        textarea {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            padding: 16px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            background: transparent;
+            color: #1e293b;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            z-index: 2;
+        }
+
+        textarea:focus {
+            background-color: transparent;
+        }
+
+        /* SVG megjelenítő konténer */
+        #mermaid_div {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+
+        #mermaid_div svg {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: none !important;
+        }
+
+        /* Pan Zoom kezelőgombok a jobb alsó sarokban */
+        .zoom-controls {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            display: flex;
+            gap: 6px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 4px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+        }
+
+        .zoom-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            color: #334155;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .zoom-btn:hover {
+            background: #f1f5f9;
+            color: #4f46e5;
+            border-color: #94a3b8;
+        }
+
+        /* Hibaüzenet doboz */
+        .error-msg {
+            color: #b91c1c;
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            padding: 16px;
+            margin: 16px;
+            border-radius: 6px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            white-space: pre-wrap;
+            font-size: 13px;
+        }
+
+        /* Példakódok szekció */
+        h3 {
+            margin-top: 20px;
+            margin-bottom: 16px;
+            font-size: 1.25rem;
+            font-weight: 600;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
         }
 
         pre {
-            font-family: 'Courier New', Courier, monospace;
-            background-color: rgb(219, 219, 219);
-            margin-left: 3em;
-            margin-right: 3em;
-            padding-top: 0.5em;
-            padding-right: 1em;
-            padding-left: 1em;
-            padding-bottom: 0.5em;
-            width: 60%;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            background-color: #1e293b;
+            color: #e2e8f0;
+            margin: 8px 0 24px 0;
+            padding: 16px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 13px;
+            line-height: 1.4;
         }
 
         .try-btn {
-            margin-left: 3em;
-            padding: 4px 10px;
+            padding: 6px 14px;
             cursor: pointer;
             background-color: #4f46e5;
             color: white;
             border: none;
-            border-radius: 4px;
-            font-size: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background-color 0.15s ease-in-out;
         }
 
         .try-btn:hover {
             background-color: #4338ca;
         }
+
+        hr {
+            border: none;
+            border-top: 1px solid #e2e8f0;
+            margin: 24px 0;
+        }
     </style>
 </head>
 
 <body>
-    <div>
-        <textarea name="code" id="mermaid_code" rows="8" placeholder="Írd ide a mermaid kódot..."></textarea>
-        <div id="mermaid_div"></div>
-        
-        <h3>Példakódok</h3>
-        
-        <button class="try-btn">Kipróbál</button>
-        <pre>
+    <a href="https://debmatyas.github.io/mermaid/index2.html">https://debmatyas.github.io/mermaid/index.html</a>
+    <div class="workspace">
+        <!-- Bal oldali oszlop: Kódszerkesztő + Sorszámozás + Kiemelés -->
+        <div class="editor-container">
+            <div class="pane-title">Mermaid Kód</div>
+            <div class="editor-wrapper">
+                <div id="line-numbers" class="line-numbers">1</div>
+                <div class="input-area-wrapper">
+                    <div id="highlight-backdrop" class="highlight-backdrop"></div>
+                    <textarea name="code" id="mermaid_code" placeholder="Írd ide a mermaid kódot..." spellcheck="false"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Jobb oldali oszlop: Előnézet és Pan-Zoom vezérlők -->
+        <div class="preview-container">
+            <div class="pane-title">Interaktív Előnézet (Görgetés = Nagyítás, Húzás = Mozgatás)</div>
+            <div id="mermaid_div"></div>
+            
+            <div class="zoom-controls">
+                <button class="zoom-btn" id="zoom-in" title="Nagyítás">+</button>
+                <button class="zoom-btn" id="zoom-out" title="Kicsinyítés">-</button>
+                <button class="zoom-btn" id="zoom-reset" title="Alaphelyzet">⟲</button>
+            </div>
+        </div>
+    </div>
+
+    <h3>Példakódok</h3>
+
+    <button class="try-btn">Kipróbál</button>
+    <pre>
 graph TD;
     A-->B;
     A-->C;
@@ -87,11 +297,11 @@ graph TD;
     class A primary;
     class B,C secondary;
     class D success;
-        </pre>
-        <hr>
-        
-        <button class="try-btn">Kipróbál</button>
-        <pre>
+    </pre>
+    <hr>
+
+    <button class="try-btn">Kipróbál</button>
+    <pre>
 sequenceDiagram
     participant Alice
     participant Bob
@@ -103,11 +313,11 @@ sequenceDiagram
     John-->>Alice: Great!
     John->>Bob: How about you?
     Bob-->>John: Jolly good!
-        </pre>
-        <hr>
-        
-        <button class="try-btn">Kipróbál</button>
-        <pre>
+    </pre>
+    <hr>
+
+    <button class="try-btn">Kipróbál</button>
+    <pre>
 classDiagram
     Class01 <|-- AveryLongClass : Cool
     Class03 *-- Class04
@@ -122,8 +332,7 @@ classDiagram
     Class01 : int chimp
     Class01 : int gorilla
     Class08 <--> C2: Cool label
-        </pre>
-    </div>
+    </pre>
 
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs';
@@ -132,12 +341,83 @@ classDiagram
 
         const input = document.querySelector('#mermaid_code');
         const mermaidDiv = document.querySelector('#mermaid_div');
+        const lineNumbersDiv = document.querySelector('#line-numbers');
+        const backdrop = document.querySelector('#highlight-backdrop');
+        let panZoomInstance = null;
 
-        const initialCode = `graph TD;\n    A-->B;\n    A-->C;\n    B-->D;\n    C-->D;`;
+        const initialCode = `graph TD;\n    A-->B;\n    A-->C;\n    B-->D;\n    C-->D;\n\n    classDef primary fill:#4f46e5,stroke:#312e81,stroke-width:2px,color:#fff;\n    classDef secondary fill:#e0e7ff,stroke:#6366f1,stroke-width:1px;\n    classDef success fill:#22c55e,stroke:#15803d,stroke-width:2px,color:#fff;\n\n    class A primary;\n    class B,C secondary;\n    class D success;`;
         input.value = initialCode;
+
+        // HTML karakterek escape-elése a biztonságos megjelenítéshez
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Sorszámok és kiemelések frissítése
+        function updateEditorEffects() {
+            const code = input.value;
+            const lineCount = code.split('\n').length;
+            
+            // Sorszámok generálása
+            let numbers = '';
+            for (let i = 1; i <= lineCount; i++) {
+                numbers += i + '\n';
+            }
+            lineNumbersDiv.textContent = numbers;
+
+            // Kurzor alatti szó megkeresése
+            const cursorPos = input.selectionStart;
+            let currentWord = '';
+
+            if (cursorPos === input.selectionEnd) {
+                // Megkeressük a szóhatárokat a kurzor körül
+                let start = cursorPos;
+                let end = cursorPos;
+                
+                while (start > 0 && /\w/.test(code[start - 1])) {
+                    start--;
+                }
+                while (end < code.length && /\w/.test(code[end])) {
+                    end++;
+                }
+
+                if (start < end) {
+                    currentWord = code.substring(start, end);
+                }
+            }
+
+            // Háttér réteg színezése (kiemelés)
+            if (currentWord && currentWord.length > 0) {
+                // Escape-eljük a teljes szöveget, majd a keresett szót becsomagoljuk a highlight classba
+                const escapedCode = escapeHtml(code);
+                // Szabályos kifejezés a szó összes előfordulásának megtalálásához (case-sensitive)
+                const regex = new RegExp('(' + currentWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'g');
+                backdrop.innerHTML = escapedCode.replace(regex, '<span class="highlight">$1</span>');
+            } else {
+                backdrop.innerHTML = escapeHtml(code);
+            }
+        }
+
+        // Görgetés szinkronizálása a háttér, a sorszámok és a textarea között
+        input.addEventListener('scroll', () => {
+            lineNumbersDiv.scrollTop = input.scrollTop;
+            backdrop.scrollTop = input.scrollTop;
+            backdrop.scrollLeft = input.scrollLeft;
+        });
 
         async function updateMermaid() {
             const code = input.value;
+            updateEditorEffects();
+
+            if (panZoomInstance) {
+                panZoomInstance.destroy();
+                panZoomInstance = null;
+            }
 
             if (!code.trim()) {
                 mermaidDiv.innerHTML = '';
@@ -149,15 +429,32 @@ classDiagram
                 const id = 'mermaid-' + Math.floor(Math.random() * 100000);
                 const { svg } = await mermaid.render(id, code);
                 mermaidDiv.innerHTML = svg;
+
+                const svgElement = mermaidDiv.querySelector('svg');
+                if (svgElement) {
+                    panZoomInstance = svgPanZoom(svgElement, {
+                        zoomEnabled: true,
+                        controlIconsEnabled: false,
+                        fit: true,
+                        center: true,
+                        minZoom: 0.2,
+                        maxZoom: 20
+                    });
+                }
+
             } catch (error) {
                 const errorMessage = error.str || error.message || error;
                 mermaidDiv.innerHTML = `<div class="error-msg"><strong>Szintaktikai hiba:</strong>\n${errorMessage}</div>`;
             }
         }
 
+        // Kezdő nézet
         updateMermaid();
 
+        // Eseménykezelők a kurzormozgatáshoz és gépeléshez
         input.addEventListener('input', updateMermaid);
+        input.addEventListener('click', updateEditorEffects);
+        input.addEventListener('keyup', updateEditorEffects);
 
         // Tab és Shift+Tab kezelése (4 szóközzel)
         input.addEventListener('keydown', (e) => {
@@ -187,10 +484,13 @@ classDiagram
                 }
 
                 updateMermaid();
+            } else {
+                // Késleltetett frissítés kurzormozgatásnál
+                setTimeout(updateEditorEffects, 10);
             }
         });
 
-        // Kipróbál gombok eseménykezelése
+        // Kipróbál gombok kezelése
         document.querySelectorAll('.try-btn').forEach(button => {
             button.addEventListener('click', () => {
                 const pre = button.nextElementSibling;
@@ -200,6 +500,22 @@ classDiagram
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                 }
             });
+        });
+
+        // Pan-Zoom manuális gombok eseményei
+        document.getElementById('zoom-in').addEventListener('click', () => {
+            if (panZoomInstance) panZoomInstance.zoomIn();
+        });
+
+        document.getElementById('zoom-out').addEventListener('click', () => {
+            if (panZoomInstance) panZoomInstance.zoomOut();
+        });
+
+        document.getElementById('zoom-reset').addEventListener('click', () => {
+            if (panZoomInstance) {
+                panZoomInstance.resetZoom();
+                panZoomInstance.resetPan();
+            }
         });
     </script>
 </body>

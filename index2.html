@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>5x Mermaid Szerkesztő</title>
+    <!-- SVG Pan Zoom könyvtár -->
+    <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .workspace {
+            display: flex;
+            gap: 16px;
+            height: 400px;
+        }
+
+        .editor-container, .preview-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .pane-title {
+            background: #f1f5f9;
+            padding: 8px 14px;
+            font-weight: 600;
+            font-size: 13px;
+            border-bottom: 1px solid #cbd5e1;
+            color: #475569;
+        }
+
+        .editor-wrapper {
+            display: flex;
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+
+        .line-numbers {
+            width: 40px;
+            padding: 14px 4px;
+            background-color: #f8fafc;
+            color: #94a3b8;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            text-align: right;
+            user-select: none;
+            overflow: hidden;
+            border-right: 1px solid #e2e8f0;
+            white-space: pre;
+            z-index: 2;
+        }
+
+        .input-area-wrapper {
+            position: relative;
+            flex: 1;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .highlight-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 14px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow: hidden;
+            pointer-events: none;
+            color: transparent;
+            z-index: 1;
+        }
+
+        .highlight {
+            background-color: #fde047;
+            color: transparent;
+            border-radius: 2px;
+        }
+
+        textarea {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            padding: 14px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            background: transparent;
+            color: #1e293b;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            z-index: 2;
+        }
+
+        .mermaid-div {
+            flex: 1;
+            position: relative;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #ffffff;
+        }
+
+        .mermaid-div svg {
+            width: 100% !important;
+            height: 100% !important;
+            max-width: none !important;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            display: flex;
+            gap: 4px;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 3px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+        }
+
+        .zoom-btn {
+            width: 28px;
+            height: 28px;
+            border: 1px solid #cbd5e1;
+            background: white;
+            color: #334155;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .zoom-btn:hover {
+            background: #f1f5f9;
+            color: #4f46e5;
+            border-color: #94a3b8;
+        }
+
+        .error-msg {
+            color: #b91c1c;
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            padding: 14px;
+            margin: 14px;
+            border-radius: 6px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            white-space: pre-wrap;
+            font-size: 12px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs';
+
+        mermaid.initialize({ startOnLoad: false });
+
+        // 5 különböző példakód
+        const samples = [
+            `graph TD;\n    A[Kezdés]-->B{Döntés};\n    B-->|Igen| C[Siker];\n    B-->|Nem| D[Újra próbálkozik];\n    D-->B;`,
+            `sequenceDiagram\n    participant U as Felhasználó\n    participant S as Szerver\n    U->>S: Kérés küldése\n    S-->>U: Válasz JSON adatként`,
+            `classDiagram\n    class Auto {\n        +String marka\n        +int evjarat\n        +indit()\n    }\n    class Motor {\n        +int loero\n    }\n    Auto *-- Motor`,
+            `stateDiagram-v2\n    [*] --> Inaktív\n    Inaktív --> Aktív : Bejelentkezés\n    Aktív --> Inaktív : Kijelentkezés\n    Aktív --> [*]`,
+            `gantt\n    title Projekt Ütemterv\n    dateFormat  YYYY-MM-DD\n    section Tervezés\n    Architektúra :a1, 2026-10-01, 7d\n    section Fejlesztés\n    Kódolás :after a1, 10d`
+        ];
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // 5 Munkaterület dinamikus létrehozása
+        for (let i = 0; i < 5; i++) {
+            const workspace = document.createElement('div');
+            workspace.className = 'workspace';
+            workspace.innerHTML = `
+                <div class="editor-container">
+                    <div class="pane-title">Szerkesztő #${i + 1}</div>
+                    <div class="editor-wrapper">
+                        <div class="line-numbers">1</div>
+                        <div class="input-area-wrapper">
+                            <div class="highlight-backdrop"></div>
+                            <textarea class="code-input" spellcheck="false" placeholder="Írd ide a mermaid kódot..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="preview-container">
+                    <div class="pane-title">Előnézet #${i + 1}</div>
+                    <div class="mermaid-div"></div>
+                    <div class="zoom-controls">
+                        <button class="zoom-btn zoom-in" title="Nagyítás">+</button>
+                        <button class="zoom-btn zoom-out" title="Kicsinyítés">-</button>
+                        <button class="zoom-btn zoom-reset" title="Alaphelyzet">⟲</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(workspace);
+
+            const input = workspace.querySelector('.code-input');
+            const mermaidDiv = workspace.querySelector('.mermaid-div');
+            const lineNumbersDiv = workspace.querySelector('.line-numbers');
+            const backdrop = workspace.querySelector('.highlight-backdrop');
+            let panZoomInstance = null;
+
+            input.value = samples[i];
+
+            function updateEditorEffects() {
+                const code = input.value;
+                const lineCount = code.split('\n').length;
+                
+                let numbers = '';
+                for (let j = 1; j <= lineCount; j++) {
+                    numbers += j + '\n';
+                }
+                lineNumbersDiv.textContent = numbers;
+
+                const cursorPos = input.selectionStart;
+                let currentWord = '';
+
+                if (cursorPos === input.selectionEnd) {
+                    let start = cursorPos;
+                    let end = cursorPos;
+                    
+                    while (start > 0 && /\w/.test(code[start - 1])) {
+                        start--;
+                    }
+                    while (end < code.length && /\w/.test(code[end])) {
+                        end++;
+                    }
+
+                    if (start < end) {
+                        currentWord = code.substring(start, end);
+                    }
+                }
+
+                if (currentWord && currentWord.length > 0) {
+                    const escapedCode = escapeHtml(code);
+                    const regex = new RegExp('(' + currentWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'g');
+                    backdrop.innerHTML = escapedCode.replace(regex, '<span class="highlight">$1</span>');
+                } else {
+                    backdrop.innerHTML = escapeHtml(code);
+                }
+            }
+
+            input.addEventListener('scroll', () => {
+                lineNumbersDiv.scrollTop = input.scrollTop;
+                backdrop.scrollTop = input.scrollTop;
+                backdrop.scrollLeft = input.scrollLeft;
+            });
+
+            async function updateMermaid() {
+                const code = input.value;
+                updateEditorEffects();
+
+                if (panZoomInstance) {
+                    panZoomInstance.destroy();
+                    panZoomInstance = null;
+                }
+
+                if (!code.trim()) {
+                    mermaidDiv.innerHTML = '';
+                    return;
+                }
+
+                try {
+                    await mermaid.parse(code);
+                    const id = 'mermaid-' + Math.floor(Math.random() * 100000);
+                    const { svg } = await mermaid.render(id, code);
+                    mermaidDiv.innerHTML = svg;
+
+                    const svgElement = mermaidDiv.querySelector('svg');
+                    if (svgElement) {
+                        panZoomInstance = svgPanZoom(svgElement, {
+                            zoomEnabled: true,
+                            controlIconsEnabled: false,
+                            fit: true,
+                            center: true,
+                            minZoom: 0.2,
+                            maxZoom: 20
+                        });
+                    }
+                } catch (error) {
+                    const errorMessage = error.str || error.message || error;
+                    mermaidDiv.innerHTML = `<div class="error-msg"><strong>Szintaktikai hiba:</strong>\n${errorMessage}</div>`;
+                }
+            }
+
+            updateMermaid();
+
+            input.addEventListener('input', updateMermaid);
+            input.addEventListener('click', updateEditorEffects);
+            input.addEventListener('keyup', updateEditorEffects);
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = input.selectionStart;
+                    const end = input.selectionEnd;
+                    const value = input.value;
+
+                    if (e.shiftKey) {
+                        const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+                        const lineSlice = value.substring(lineStart, start);
+                        
+                        let spacesToRemove = 0;
+                        while (spacesToRemove < 4 && lineSlice[spacesToRemove] === ' ') {
+                            spacesToRemove++;
+                        }
+
+                        if (spacesToRemove > 0) {
+                            input.value = value.substring(0, lineStart) + value.substring(lineStart + spacesToRemove);
+                            input.selectionStart = Math.max(lineStart, start - spacesToRemove);
+                            input.selectionEnd = Math.max(lineStart, end - spacesToRemove);
+                        }
+                    } else {
+                        input.value = value.substring(0, start) + "    " + value.substring(end);
+                        input.selectionStart = input.selectionEnd = start + 4;
+                    }
+
+                    updateMermaid();
+                } else {
+                    setTimeout(updateEditorEffects, 10);
+                }
+            });
+
+            workspace.querySelector('.zoom-in').addEventListener('click', () => {
+                if (panZoomInstance) panZoomInstance.zoomIn();
+            });
+
+            workspace.querySelector('.zoom-out').addEventListener('click', () => {
+                if (panZoomInstance) panZoomInstance.zoomOut();
+            });
+
+            workspace.querySelector('.zoom-reset').addEventListener('click', () => {
+                if (panZoomInstance) {
+                    panZoomInstance.resetZoom();
+                    panZoomInstance.resetPan();
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>

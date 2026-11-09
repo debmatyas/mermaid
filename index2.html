@@ -17,7 +17,7 @@
             background-color: #f8fafc;
             color: #1e293b;
             margin: 0;
-            padding: 20px;
+            padding: 8px;
             display: flex;
             flex-direction: column;
             gap: 24px;
@@ -26,10 +26,12 @@
         .workspace {
             display: flex;
             gap: 16px;
-            height: 400px;
+            height: 85vh;
+            min-height: 500px;
         }
 
-        .editor-container, .preview-container {
+        .editor-container,
+        .preview-container {
             flex: 1;
             display: flex;
             flex-direction: column;
@@ -133,6 +135,7 @@
             height: 100%;
             overflow: hidden;
             background-color: #ffffff;
+
         }
 
         .mermaid-div svg {
@@ -152,7 +155,7 @@
             padding: 3px;
             border-radius: 6px;
             border: 1px solid #cbd5e1;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
         }
 
         .zoom-btn {
@@ -177,6 +180,12 @@
             border-color: #94a3b8;
         }
 
+        .zoom-btn.wide {
+            width: auto;
+            padding: 0 8px;
+            font-size: 11px;
+        }
+
         .error-msg {
             color: #b91c1c;
             background-color: #fef2f2;
@@ -192,20 +201,180 @@
 </head>
 
 <body>
+    <a href="https://debmatyas.github.io/mermaid/index.html">index.html</a>
 
     <script type="module">
         import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@12/dist/mermaid.esm.min.mjs';
 
-        mermaid.initialize({ startOnLoad: false });
+        mermaid.initialize({ startOnLoad: false, htmlLabels: false, flowchart: { htmlLabels: false } });
 
-        // 5 különböző példakód
+        // Példakódok
         const samples = [
-            `graph TD;\n    A[Kezdés]-->B{Döntés};\n    B-->|Igen| C[Siker];\n    B-->|Nem| D[Újra próbálkozik];\n    D-->B;`,
-            `sequenceDiagram\n    participant U as Felhasználó\n    participant S as Szerver\n    U->>S: Kérés küldése\n    S-->>U: Válasz JSON adatként`,
-            `classDiagram\n    class Auto {\n        +String marka\n        +int evjarat\n        +indit()\n    }\n    class Motor {\n        +int loero\n    }\n    Auto *-- Motor`,
-            `stateDiagram-v2\n    [*] --> Inaktív\n    Inaktív --> Aktív : Bejelentkezés\n    Aktív --> Inaktív : Kijelentkezés\n    Aktív --> [*]`,
-            `gantt\n    title Projekt Ütemterv\n    dateFormat  YYYY-MM-DD\n    section Tervezés\n    Architektúra :a1, 2026-10-01, 7d\n    section Fejlesztés\n    Kódolás :after a1, 10d`
+            // 1. graph TD: újrapróbálkozás korláttal, hibaágakkal
+            `graph TD;\n    A[Kezdés] --> B{Bemenet érvényes?};\n    B -->|Igen| C[Feldolgozás];\n    B -->|Nem| X[Hibaüzenet];\n    C --> D{Sikeres?};\n    D -->|Igen| E[Mentés];\n    D -->|Nem| F{Próbálkozások < 3?};\n    F -->|Igen| G[Várakozás 5 mp];\n    G --> C;\n    F -->|Nem| H[Riasztás küldése];\n    E --> I[Siker];\n    H --> J[Kézi beavatkozás];\n    X --> A;`,
+
+            // 2. sequenceDiagram: cache + adatbázis + opt/par
+            `sequenceDiagram\n    autonumber\n    participant U as Felhasználó\n    participant S as Szerver\n    participant C as Cache\n    participant D as Adatbázis\n    U->>S: GET /termekek\n    activate S\n    S->>C: Lekérdezés kulcs alapján\n    alt Cache találat\n        C-->>S: Tárolt JSON\n    else Cache hiba\n        S->>D: SELECT * FROM termekek\n        D-->>S: Sorok\n        S->>C: Mentés 60 mp-re\n    end\n    par Naplózás\n        S->>S: Kérés naplózása\n    and Metrika\n        S->>S: Számláló növelése\n    end\n    S-->>U: Válasz JSON adatként\n    deactivate S`,
+
+            // 3. classDiagram: interfész, absztrakt osztály, kompozíció
+            `classDiagram\n    class Jarmu {\n        <<abstract>>\n        +String rendszam\n        +int evjarat\n        +indit()* void\n        +megall() void\n    }\n    class Auto {\n        +int ajtokSzama\n        +indit() void\n    }\n    class Motor {\n        +int loero\n        +int hengerurtartalom\n        +beindul() bool\n    }\n    class Kerek {\n        +int meret\n        -double nyomas\n    }\n    class Szervizelheto {\n        <<interface>>\n        +szervizel() void\n    }\n    Jarmu <|-- Auto\n    Auto *-- Motor : tartalmaz\n    Auto *-- "4" Kerek\n    Auto ..|> Szervizelheto`,
+
+            // 4. stateDiagram-v2: choice, fork/join, jegyzet
+            `stateDiagram-v2\n    [*] --> Inaktiv\n    state "Inaktív" as Inaktiv\n    state "Aktív" as Aktiv\n    state bejelentkezes <<choice>>\n    Inaktiv --> bejelentkezes : Bejelentkezés\n    bejelentkezes --> Aktiv : Helyes jelszó\n    bejelentkezes --> Zarolt : 3 hibás próba\n    state fork_state <<fork>>\n    state join_state <<join>>\n    Aktiv --> fork_state\n    fork_state --> Szinkron\n    fork_state --> Ertesites\n    Szinkron --> join_state\n    Ertesites --> join_state\n    join_state --> Aktiv\n    Aktiv --> Inaktiv : Kijelentkezés\n    Zarolt --> Inaktiv : Admin feloldás\n    Aktiv --> [*]\n    note right of Zarolt\n        30 perc után\n        automatikusan feloldódik\n    end note`,
+
+            // 5. gantt: több szekció, függőségek, mérföldkő
+            `gantt\n    title Projekt Ütemterv\n    dateFormat  YYYY-MM-DD\n    axisFormat  %m.%d\n    excludes weekends\n    section Tervezés\n    Követelmények :done, a0, 2026-10-01, 4d\n    Architektúra :done, a1, after a0, 7d\n    Prototípus :active, a2, after a1, 5d\n    section Fejlesztés\n    Backend :b1, after a1, 12d\n    Frontend :b2, after a2, 10d\n    Integráció :crit, b3, after b1, 5d\n    section Tesztelés\n    Egységtesztek :c1, after b1, 6d\n    Terheléses teszt :crit, c2, after b3, 4d\n    section Átadás\n    Dokumentáció :d1, after b2, 5d\n    Kiadás :milestone, d2, after c2, 0d`,
+
+            // 6. flowchart LR: különböző alakzatok, feliratos élek
+            `flowchart LR\n    A([Ötlet]) --> B(Tervezés)\n    B --> C{Megvalósítható?}\n    C -->|Igen| D[[Fejlesztés]]\n    C -->|Nem| E((Elvetés))\n    D --> F[(Adatbázis)]\n    D --> G>Kiadás]\n    D --> H{{Code review}}\n    H -->|Javítás kell| D\n    H -->|Rendben| I[/Tesztelés/]\n    I --> J[\\Dokumentálás\\]\n    J --> G\n    F -.->|Mentés| K[(Backup)]\n    G ==> L[Felhasználók]`,
+
+            // 7. flowchart TB: egymásba ágyazott subgraph-ok
+            `flowchart TB\n    subgraph Kliens\n        direction LR\n        UI[Weboldal] --> JS[JavaScript]\n        JS --> SW[Service Worker]\n    end\n    subgraph Szerveroldal\n        direction TB\n        LB[Load balancer] --> API1[API 1]\n        LB --> API2[API 2]\n        subgraph Adatréteg\n            DB[(PostgreSQL)]\n            RD[(Redis)]\n        end\n        API1 --> DB\n        API2 --> DB\n        API1 --> RD\n        API2 --> RD\n    end\n    JS --> LB\n    SW -.-> LB`,
+
+            // 8. flowchart LR: classDef, több stílus, CI/CD
+            `flowchart LR\n    classDef jo fill:#c8e6c9,stroke:#2e7d32,color:#000;\n    classDef rossz fill:#ffcdd2,stroke:#c62828,color:#000;\n    classDef semleges fill:#e3f2fd,stroke:#1565c0,color:#000;\n    A[Commit]:::semleges --> B[Build]:::semleges\n    B --> C{Lint}\n    C -->|OK| D[Egységtesztek]:::semleges\n    C -->|Hiba| R1[Hibajavítás]:::rossz\n    D --> E{Sikeres?}\n    E -->|Igen| F[Integrációs teszt]:::semleges\n    E -->|Nem| R1\n    F --> G{Minden zöld?}\n    G -->|Igen| H[Deploy staging]:::jo\n    G -->|Nem| R1\n    H --> I[Deploy production]:::jo\n    R1 --> A`,
+
+            // 9. sequenceDiagram: bejelentkezés, OAuth, rect, opt
+            `sequenceDiagram\n    autonumber\n    actor F as Felhasználó\n    participant W as Webalkalmazás\n    participant A as Auth szerver\n    participant DB as Felhasználói adatbázis\n    F->>W: Bejelentkezés\n    W->>A: Hitelesítési kérés\n    A->>DB: Felhasználó keresése\n    DB-->>A: Felhasználói rekord\n    alt Helyes jelszó\n        rect rgb(200, 240, 200)\n            A-->>W: Token\n            W-->>F: Üdvözlő oldal\n        end\n        opt Kétfaktoros azonosítás be van kapcsolva\n            A->>F: Kód küldése SMS-ben\n            F->>A: Kód megadása\n        end\n    else Hibás jelszó\n        rect rgb(255, 210, 210)\n            A-->>W: 401 Unauthorized\n            W-->>F: Hibaüzenet\n        end\n    end\n    Note over W,A: A token 15 percig érvényes`,
+
+            // 10. sequenceDiagram: heartbeat, loop, critical, break
+            `sequenceDiagram\n    participant K as Kliens\n    participant S as Szerver\n    participant M as Monitoring\n    K->>S: Kapcsolat felépítése\n    S-->>K: Kapcsolat elfogadva\n    loop Minden 5 másodpercben\n        K->>S: Heartbeat\n        S-->>K: OK\n    end\n    Note right of S: A szerver naplózza a kéréseket\n    K-)S: Aszinkron üzenet\n    critical Adatbázis kapcsolat\n        S->>S: Tranzakció indítása\n    option Időtúllépés\n        S-->>K: 504 Gateway Timeout\n    end\n    break Ha a kliens megszakít\n        K->>S: Kapcsolat bontása\n        S->>M: Esemény jelentése\n    end\n    S--xK: Kapcsolat lezárva`,
+
+            // 11. classDiagram: öröklődés, enum, láthatóság
+            `classDiagram\n    class Allat {\n        <<abstract>>\n        +String nev\n        +int kor\n        #double suly\n        +hangotAd()* void\n        +eszik(Eledel e) bool\n    }\n    class Kutya {\n        +String fajta\n        +vizsgazik() void\n        +hangotAd() void\n    }\n    class Macska {\n        +bool bentLako\n        +dorombol() void\n        +hangotAd() void\n    }\n    class Gazda {\n        +String nev\n        +List~Allat~ allatok\n        +gondoz(Allat a) void\n    }\n    class Eledel {\n        <<enumeration>>\n        HUS\n        MAGVAK\n        HAL\n    }\n    Allat <|-- Kutya\n    Allat <|-- Macska\n    Gazda "1" o-- "*" Allat : gondoz\n    Allat ..> Eledel : eszik`,
+
+            // 12. classDiagram: webshop domain, többszörösségek
+            `classDiagram\n    class Rendeles {\n        +int id\n        +Date datum\n        +Allapot allapot\n        +kiszamolAr() double\n        +lemond() void\n    }\n    class Termek {\n        +String nev\n        +double ar\n        +int keszlet\n    }\n    class Ugyfel {\n        +String nev\n        +String email\n        +regisztral() void\n    }\n    class Szamla {\n        +String szamlaszam\n        +double osszeg\n        +nyomtat() void\n    }\n    class Fizetes {\n        <<interface>>\n        +fizet(double osszeg) bool\n    }\n    class Bankkartya {\n        +String kartyaszam\n        +fizet(double osszeg) bool\n    }\n    class Allapot {\n        <<enumeration>>\n        UJ\n        FIZETVE\n        SZALLITAS\n        KESZ\n    }\n    Ugyfel "1" --> "*" Rendeles : leadja\n    Rendeles "*" o-- "*" Termek : tartalmaz\n    Rendeles "1" *-- "1" Szamla\n    Rendeles ..> Fizetes : használ\n    Fizetes <|.. Bankkartya\n    Rendeles --> Allapot`,
+
+            // 13. stateDiagram-v2: jóváhagyási folyamat
+            `stateDiagram-v2\n    direction LR\n    [*] --> Piszkozat\n    Piszkozat --> Ellenorzes : Beküldés\n    state "Ellenőrzés" as Ellenorzes\n    state dontes <<choice>>\n    Ellenorzes --> dontes\n    dontes --> Elfogadva : Jóváhagyás\n    dontes --> Piszkozat : Visszaküldés\n    dontes --> Elutasitva : Elutasítás\n    Elfogadva --> Publikalva : Közzététel\n    Publikalva --> Archivalt : 1 év után\n    Elutasitva --> [*]\n    Archivalt --> [*]\n    note left of Ellenorzes\n        Két ellenőr\n        egyetértése szükséges\n    end note`,
+
+            // 14. stateDiagram-v2: beágyazott és párhuzamos állapotok
+            `stateDiagram-v2\n    [*] --> Futas\n    state "Futás" as Futas {\n        [*] --> Varakozik\n        state "Várakozik" as Varakozik\n        Varakozik --> Feldolgoz : Új kérés\n        Feldolgoz --> Varakozik : Kész\n        Feldolgoz --> Hibas : Kivétel\n        Hibas --> Varakozik : Újraindítás\n        --\n        [*] --> Figyel\n        Figyel --> Riaszt : Küszöb túllépve\n        Riaszt --> Figyel : Visszaigazolva\n    }\n    Futas --> Leallitas : Leállítás\n    state "Leállítás" as Leallitas {\n        [*] --> Mentes\n        Mentes --> Kapcsolat_bontas\n        Kapcsolat_bontas --> [*]\n    }\n    Leallitas --> [*]`,
+
+            // 15. gantt: webshop, több szekció, kritikus út
+            `gantt\n    title Webshop fejlesztés\n    dateFormat  YYYY-MM-DD\n    axisFormat  %m.%d\n    todayMarker off\n    section Tervezés\n    Követelmények :done, t1, 2026-11-01, 5d\n    Adatmodell :done, t2, after t1, 4d\n    UI terv :done, t3, after t1, 6d\n    section Backend\n    API fejlesztés :active, f1, after t2, 10d\n    Fizetési integráció :crit, f3, after f1, 6d\n    Admin felület :f4, after f1, 8d\n    section Frontend\n    Termékoldalak :f2, after t3, 12d\n    Kosár és pénztár :crit, f5, after f2, 7d\n    section Átadás\n    Tesztelés :crit, a1, after f5, 5d\n    Biztonsági audit :a3, after f3, 4d\n    Élesítés :milestone, a2, after a1, 0d`,
+
+            // 16. pie: több kategória
+            `pie showData\n    title Programozási nyelvek használata egy csapatban\n    "Python" : 32\n    "JavaScript" : 24\n    "TypeScript" : 16\n    "Rust" : 11\n    "Java" : 8\n    "Go" : 5\n    "Egyéb" : 4`,
+
+            // 17. erDiagram: több entitás, kulcsok, kapcsolatok
+            `erDiagram\n    UGYFEL ||--o{ RENDELES : lead\n    RENDELES ||--|{ TETEL : tartalmaz\n    TERMEK ||--o{ TETEL : szerepel\n    KATEGORIA ||--o{ TERMEK : csoportosit\n    RENDELES ||--o| SZAMLA : kap\n    UGYFEL ||--o{ CIM : rendelkezik\n    UGYFEL {\n        int id PK\n        string nev\n        string email UK\n        date regisztralt\n    }\n    RENDELES {\n        int id PK\n        int ugyfel_id FK\n        date datum\n        string allapot\n    }\n    TETEL {\n        int rendeles_id FK\n        int termek_id FK\n        int mennyiseg\n    }\n    TERMEK {\n        int id PK\n        int kategoria_id FK\n        string nev\n        float ar\n    }\n    KATEGORIA {\n        int id PK\n        string megnevezes\n    }\n    SZAMLA {\n        int id PK\n        int rendeles_id FK\n        float osszeg\n    }\n    CIM {\n        int id PK\n        int ugyfel_id FK\n        string iranyitoszam\n        string varos\n    }`,
+
+            // 18. journey: több szekció és szereplő
+            `journey\n    title Egy átlagos munkanap\n    section Reggel\n      Ébredés: 2: Én\n      Kávéfőzés: 5: Én\n      Reggeli: 4: Én, Család\n      Utazás: 3: Én, Kollégák\n    section Délelőtt\n      Napi stand-up: 3: Én, Csapat\n      Kódolás: 5: Én\n      Code review: 4: Én, Csapat\n    section Délután\n      Ebédszünet: 5: Én, Kollégák\n      Meeting: 2: Én, Csapat, Főnök\n      Hibajavítás: 3: Én\n    section Este\n      Hazaút: 3: Én\n      Vacsora: 5: Én, Család\n      Pihenés: 5: Én`,
+
+            // 19. gitGraph: több ág, merge, cherry-pick, tagek
+            `gitGraph\n    commit id: "Kezdés"\n    commit id: "Alap struktúra"\n    branch fejlesztes\n    checkout fejlesztes\n    commit id: "Új funkció"\n    commit id: "Tesztek"\n    branch hibajavitas\n    checkout hibajavitas\n    commit id: "Bugfix #12"\n    checkout main\n    commit id: "Hotfix"\n    checkout fejlesztes\n    merge hibajavitas\n    commit id: "Refaktorálás"\n    checkout main\n    merge fejlesztes tag: "v1.0"\n    branch kiadas\n    checkout kiadas\n    commit id: "Verziófrissítés"\n    checkout main\n    cherry-pick id: "Verziófrissítés"\n    commit id: "Kiadás" tag: "v1.1" type: HIGHLIGHT`,
+
+            // 20. mindmap: mélyebb fa
+            `mindmap\n  root((Szoftverfejlesztés))\n    Nyelvek\n      Rendszerszintű\n        Rust\n        C++\n      Szkript\n        Python\n        JavaScript\n    Eszközök\n      Verziókezelés\n        Git\n      Konténerek\n        Docker\n        Kubernetes\n      IDE\n    Módszertanok\n      Agilis\n        Scrum\n        Kanban\n      Hagyományos\n        Vízesés\n    Minőségbiztosítás\n      Egységteszt\n      Integrációs teszt\n      Code review`,
+
+            // 21. timeline: szekciók és több esemény
+            `timeline\n    title A web és a programozás története\n    section Kezdetek\n        1991 : Első weboldal\n        1993 : Mosaic böngésző\n        1995 : JavaScript megjelenése\n             : Java 1.0\n    section Web 2.0\n        2004 : Web 2.0 fogalma\n        2006 : jQuery\n        2008 : Chrome böngésző\n    section Modern korszak\n        2013 : React\n        2015 : Rust 1.0\n             : ES6 szabvány\n        2020 : WebAssembly szabvány`,
+
+            // 22. quadrantChart: több pont
+            `quadrantChart\n    title Feladatok priorizálása\n    x-axis Alacsony erőfeszítés --> Magas erőfeszítés\n    y-axis Alacsony hatás --> Magas hatás\n    quadrant-1 Tervezd be\n    quadrant-2 Csináld most\n    quadrant-3 Később\n    quadrant-4 Kidobható\n    Dashboard: [0.7, 0.85]\n    Hibajavítás: [0.2, 0.8]\n    Refaktorálás: [0.6, 0.35]\n    Logó csere: [0.15, 0.1]\n    Dokumentáció: [0.45, 0.6]\n    Új funkció: [0.85, 0.7]\n    Teljesítmény: [0.55, 0.9]\n    Színek átírása: [0.3, 0.2]`,
+
+            // 23. requirementDiagram: több követelmény, elem, kapcsolat
+            `requirementDiagram\n    requirement valaszido {\n        id: 1\n        text: "A rendszer 2 másodpercen belül válaszol"\n        risk: high\n        verifymethod: test\n    }\n    functionalRequirement bejelentkezes {\n        id: 2\n        text: "A felhasználó be tud jelentkezni"\n        risk: medium\n        verifymethod: demonstration\n    }\n    performanceRequirement terheles {\n        id: 3\n        text: "1000 egyidejű felhasználót kiszolgál"\n        risk: high\n        verifymethod: test\n    }\n    interfaceRequirement api {\n        id: 4\n        text: "REST API dokumentált"\n        risk: low\n        verifymethod: inspection\n    }\n    element terheleses_teszt {\n        type: simulation\n    }\n    element auth_modul {\n        type: module\n    }\n    terheleses_teszt - satisfies -> valaszido\n    terheleses_teszt - verifies -> terheles\n    auth_modul - satisfies -> bejelentkezes\n    terheles - derives -> valaszido\n    api - refines -> bejelentkezes`,
+
+            // 24. sankey-beta: többszintű folyamat (ékezet nélkül!)
+            `sankey-beta\n\nFizetes,Lakhatas,120000\nFizetes,Elelmiszer,80000\nFizetes,Szorakozas,30000\nFizetes,Megtakaritas,70000\nFizetes,Kozlekedes,25000\nMellekallas,Szorakozas,15000\nMellekallas,Megtakaritas,20000\nLakhatas,Berleti dij,90000\nLakhatas,Rezsi,30000\nMegtakaritas,Reszvenyek,45000\nMegtakaritas,Keszpenz,25000\nMegtakaritas,Alap,20000\nSzorakozas,Mozi,15000\nSzorakozas,Utazas,30000`,
+
+            // 25. xychart-beta: két adatsor, idézőjeles kategóriák
+            `xychart-beta\n    title "Havi látogatók és konverziók"\n    x-axis ["jan", "feb", "már", "ápr", "máj", "jún", "júl", "aug", "szep", "okt", "nov", "dec"]\n    y-axis "Látogatók (fő)" 0 --> 1500\n    bar [200, 350, 500, 650, 800, 950, 900, 1000, 1150, 1250, 1350, 1450]\n    line [150, 300, 420, 600, 720, 880, 850, 940, 1100, 1180, 1300, 1400]`,
+
+            // 26. block-beta: háromrétegű architektúra
+            `block-beta\n    columns 3\n    A["Frontend"] B["API gateway"] C["Auth"]\n    D["Cache"] E["Szolgaltatas"] F["Uzenetsor"]\n    G[("Adatbazis")]:3\n    A --> B\n    B --> C\n    B --> E\n    E --> D\n    E --> F\n    E --> G`,
+
+            // 27. architecture-beta: csoportok, szolgáltatások, élek
+            `architecture-beta\n    group cloud(cloud)[Felho]\n    group adat(database)[Adatreteg] in cloud\n    service web(internet)[Web] in cloud\n    service srv(server)[Backend] in cloud\n    service queue(server)[Queue] in cloud\n    service db(database)[Postgres] in adat\n    service cache(disk)[Cache] in adat\n    web:R -- L:srv\n    srv:R -- L:db\n    srv:B -- T:cache\n    srv:T -- B:queue`,
+
+            // 28. packet-beta: TCP fejléc
+            `packet-beta\n    0-15: "Forrás port"\n    16-31: "Cél port"\n    32-63: "Sorszám"\n    64-95: "Nyugtázási szám"\n    96-99: "Adat offset"\n    100-105: "Fenntartott"\n    106-111: "Jelzők"\n    112-127: "Ablakméret"\n    128-143: "Ellenőrző összeg"\n    144-159: "Sürgős mutató"`
         ];
+
+        // Diagramtípusok magyar nevei (a mermaid.detectType() kulcsai alapján)
+        const typeNames = {
+            'flowchart': 'Folyamatábra (flowchart)',
+            'flowchart-v2': 'Folyamatábra (flowchart)',
+            'sequence': 'Szekvencia diagram',
+            'class': 'Osztálydiagram',
+            'classDiagram': 'Osztálydiagram',
+            'state': 'Állapotdiagram',
+            'stateDiagram': 'Állapotdiagram',
+            'gantt': 'Gantt diagram',
+            'pie': 'Kördiagram',
+            'er': 'ER diagram',
+            'journey': 'Felhasználói út (journey)',
+            'gitGraph': 'Git gráf',
+            'mindmap': 'Gondolattérkép (mindmap)',
+            'timeline': 'Idővonal (timeline)',
+            'quadrantChart': 'Kvadráns diagram',
+            'requirement': 'Követelménydiagram',
+            'sankey': 'Sankey diagram',
+            'xychart': 'XY diagram',
+            'block': 'Blokk diagram',
+            'architecture': 'Architektúra diagram',
+            'packet': 'Csomag diagram',
+            'kanban': 'Kanban',
+            'c4': 'C4 diagram'
+        };
+
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        // Explicit méretet ad az SVG-nek (a viewBox alapján), hogy önállóan is jól nyíljon meg
+        function prepareSvg(svgString) {
+            const doc = new DOMParser().parseFromString(svgString, 'image/svg+xml');
+            const svgEl = doc.documentElement;
+            const vb = (svgEl.getAttribute('viewBox') || '0 0 800 600').split(/\s+/).map(Number);
+            const width = Math.ceil(vb[2]);
+            const height = Math.ceil(vb[3]);
+            svgEl.setAttribute('width', width);
+            svgEl.setAttribute('height', height);
+            svgEl.style.maxWidth = '';
+            if (!svgEl.getAttribute('xmlns')) {
+                svgEl.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            }
+            return { text: new XMLSerializer().serializeToString(svgEl), width, height };
+        }
+
+        function downloadSvg(svgString, filename) {
+            const { text } = prepareSvg(svgString);
+            downloadBlob(new Blob([text], { type: 'image/svg+xml;charset=utf-8' }), filename);
+        }
+
+        function downloadPng(svgString, filename, scale = 2) {
+            const { text, width, height } = prepareSvg(svgString);
+            const url = URL.createObjectURL(new Blob([text], { type: 'image/svg+xml;charset=utf-8' }));
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = width * scale;
+                canvas.height = height * scale;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff'; // fehér háttér, különben átlátszó lenne
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(url);
+                canvas.toBlob(blob => downloadBlob(blob, filename), 'image/png');
+            };
+            img.onerror = () => {
+                URL.revokeObjectURL(url);
+                alert('A PNG exportálás nem sikerült.');
+            };
+            img.src = url;
+        }
 
         function escapeHtml(text) {
             return text
@@ -216,8 +385,8 @@
                 .replace(/'/g, "&#039;");
         }
 
-        // 5 Munkaterület dinamikus létrehozása
-        for (let i = 0; i < 5; i++) {
+        // Munkaterületek dinamikus létrehozása
+        for (let i = 0; i < samples.length; i++) {
             const workspace = document.createElement('div');
             workspace.className = 'workspace';
             workspace.innerHTML = `
@@ -232,9 +401,11 @@
                     </div>
                 </div>
                 <div class="preview-container">
-                    <div class="pane-title">Előnézet #${i + 1}</div>
+                    <div class="pane-title"><span class="type-label">Előnézet</span> #${i + 1}</div>
                     <div class="mermaid-div"></div>
                     <div class="zoom-controls">
+                        <button class="zoom-btn wide download-svg" title="SVG letöltése">SVG</button>
+                        <button class="zoom-btn wide download-png" title="PNG letöltése">PNG</button>
                         <button class="zoom-btn zoom-in" title="Nagyítás">+</button>
                         <button class="zoom-btn zoom-out" title="Kicsinyítés">-</button>
                         <button class="zoom-btn zoom-reset" title="Alaphelyzet">⟲</button>
@@ -247,14 +418,25 @@
             const mermaidDiv = workspace.querySelector('.mermaid-div');
             const lineNumbersDiv = workspace.querySelector('.line-numbers');
             const backdrop = workspace.querySelector('.highlight-backdrop');
+            const typeLabel = workspace.querySelector('.type-label');
             let panZoomInstance = null;
+            let lastSvg = '';
 
             input.value = samples[i];
+
+            function updateTypeLabel(code) {
+                try {
+                    const type = mermaid.detectType(code);
+                    typeLabel.textContent = typeNames[type] || type;
+                } catch (e) {
+                    typeLabel.textContent = 'Ismeretlen típus';
+                }
+            }
 
             function updateEditorEffects() {
                 const code = input.value;
                 const lineCount = code.split('\n').length;
-                
+
                 let numbers = '';
                 for (let j = 1; j <= lineCount; j++) {
                     numbers += j + '\n';
@@ -267,7 +449,7 @@
                 if (cursorPos === input.selectionEnd) {
                     let start = cursorPos;
                     let end = cursorPos;
-                    
+
                     while (start > 0 && /\w/.test(code[start - 1])) {
                         start--;
                     }
@@ -298,6 +480,8 @@
             async function updateMermaid() {
                 const code = input.value;
                 updateEditorEffects();
+                updateTypeLabel(code);
+                lastSvg = '';
 
                 if (panZoomInstance) {
                     panZoomInstance.destroy();
@@ -313,6 +497,7 @@
                     await mermaid.parse(code);
                     const id = 'mermaid-' + Math.floor(Math.random() * 100000);
                     const { svg } = await mermaid.render(id, code);
+                    lastSvg = svg;
                     mermaidDiv.innerHTML = svg;
 
                     const svgElement = mermaidDiv.querySelector('svg');
@@ -348,7 +533,7 @@
                     if (e.shiftKey) {
                         const lineStart = value.lastIndexOf('\n', start - 1) + 1;
                         const lineSlice = value.substring(lineStart, start);
-                        
+
                         let spacesToRemove = 0;
                         while (spacesToRemove < 4 && lineSlice[spacesToRemove] === ' ') {
                             spacesToRemove++;
@@ -368,6 +553,14 @@
                 } else {
                     setTimeout(updateEditorEffects, 10);
                 }
+            });
+
+            workspace.querySelector('.download-svg').addEventListener('click', () => {
+                if (lastSvg) downloadSvg(lastSvg, `mermaid-${i + 1}.svg`);
+            });
+
+            workspace.querySelector('.download-png').addEventListener('click', () => {
+                if (lastSvg) downloadPng(lastSvg, `mermaid-${i + 1}.png`);
             });
 
             workspace.querySelector('.zoom-in').addEventListener('click', () => {

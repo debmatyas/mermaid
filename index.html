@@ -339,102 +339,115 @@ classDiagram
     <pre>
 flowchart LR
 
-Citizen["kérelmező állampolgár"]
+Owner["kérelmező ügyfél"]
 
 subgraph Channel["Beadási csatornák"]
     direction TB
 
-    P1["OkmányApp"]
-    P2["RKTA alkalmazás"]
-    P3["DÁP mobil App"]
-    P4["SZÜF"]
-    P5["KIOSK alkalmazás"]
-    P6["KAB alkalmazás"]
-    P7["BŰNYH ügyfélszolgálaton"]
-    P8["Postai úton"]
+    C1["ÜgyfélKapu portál"]
+    C2["Mobil alkalmazás"]
+    C3["Okmányirodai ügyintéző"]
+    C4["Kormányablak"]
+    C5["Forgalmi KIOSK"]
+    C6["Postai úton"]
+    C7["Kereskedői integráció"]
 end
 
-Citizen --> P1
-Citizen --> P2
-Citizen --> P3
-Citizen --> P4
-Citizen --> P5
-Citizen --> P6
-Citizen --> P7
-Citizen --> P8
+Owner --> C1
+Owner --> C2
+Owner --> C3
+Owner --> C4
+Owner --> C5
+Owner --> C6
+Owner --> C7
 
-P1 --> WS1["Érkeztető WS"]
-P2 --> WS1
+C1 --> GW1["Webes fogadó szolgáltatás"]
+C2 --> GW1
 
-P3 --> W1["web-igény befogadó"]
-P4 --> W1
+C3 --> GW2["Ügyintézői WS"]
+C4 --> GW2
 
-P5 --> WS2["Kérelmekezelő WS"]
-P6 --> WS2
+C5 --> GW3["KIOSK fogadó"]
+C7 --> GW3
 
-W1 --> W2["web-igény feldolgozó"]
-W2 --> W3["web-kérelemkezelő"]
+C6 --> SCAN["Iktatás és szkennelés"]
 
-NSZA(("NSZA"))
-SZL(("SZL REPLIKA"))
+GW1 --> VAL["Adatvalidáló modul"]
+GW2 --> VAL
+GW3 --> VAL
+SCAN --> MAN["Kézi adatrögzítés"]
+MAN --> VAL
 
-W3 --> NSZA
-WS2 --> SZL
+QUEUE(("Üzenetsor"))
+CACHE(("Replika adatbázis"))
 
-E1["ERHAB (BŰNYH) igénylés kezelő"]
-E2["ERHAB ANY igénylés kezelő"]
+VAL --> QUEUE
+QUEUE --> CACHE
 
-P7 --> E1
-P8 --> E2
+PROC["Kérelemfeldolgozó motor"]
+CACHE --> PROC
 
-E1 --> SZL
-E2 --> SZL
+subgraph Checks["Háttérellenőrzések"]
+    direction TB
 
-PROFILE["HEB profilkezelő"]
+    K1["Járműnyilvántartás lekérdezés"]
+    K2["Adóhatósági igazolás"]
+    K3["Biztosítási adatok ellenőrzése"]
+    K4["Műszaki vizsga érvényesség"]
+    K5["Körözési nyilvántartás"]
+end
 
-NSZA --> PROFILE
-SZL --> PROFILE
+PROC --> K1
+PROC --> K2
+PROC --> K3
+PROC --> K4
+PROC --> K5
 
-REG[(Bűnügyi és foglalmi nyilvántartás)]
+RESULT{{"Ellenőrzések összegzése"}}
 
-PROFILE --> REG
+K1 --> RESULT
+K2 --> RESULT
+K3 --> RESULT
+K4 --> RESULT
+K5 --> RESULT
 
-DHEB{{dHEB}}
-HEB{{HEB}}
+RESULT --> OK["Minden feltétel teljesül"]
+RESULT --> MISSING["Hiányzó dokumentum"]
+RESULT --> BLOCK["Akadály áll fenn"]
 
-REG --> DHEB
-REG --> HEB
+OK --> AUTO["Automatikus döntés"]
+MISSING --> NOTIFY["Hiánypótlási felszólítás"]
+BLOCK --> REVIEW["Ügyintézői elbíráló felület"]
 
-DHEB --> DHEB_OK["nem szerepel BŰNYH-ben vagy foglalomban"]
+NOTIFY --> WAIT["Határidő figyelés"]
+WAIT --> PROC
 
-HEB --> HEB_OK["nem szerepel BŰNYH-ben vagy foglalomban"]
-HEB --> HEB_BAD["szerepel BŰNYH-ben vagy foglalomban"]
+REVIEW --> APPROVE["Jóváhagyás"]
+REVIEW --> REJECT["Elutasítás"]
+REVIEW --> SUSPEND["Eljárás felfüggesztése"]
 
-DHEB_OK --> D1["dHEB kiadható"]
+AUTO --> DOCGEN["Okirat generálás + PDF + e-aláírás"]
+APPROVE --> DOCGEN
 
-D1 --> D2["HEB legacy-karb"]
-D2 --> D3["HEB megszemélyesítő"]
-D3 --> D4["HEB minőségellenőrző"]
-D4 --> D5["HEB kézbesítő"]
+REJECT --> DECISION["Elutasító határozat"]
+SUSPEND --> DECISION
 
-HEB_BAD --> DEC["ERHAB (BŰNYH) elbíráló felület"]
+DOCGEN --> PRINT1["Központi nyomtatás"]
+DOCGEN --> PRINT2["Helyi nyomtatás"]
 
-DEC --> NEG["megtagadó / felfüggesztő / hiánypótló"]
+PRINT1 --> PROD["Törzskönyv és forgalmi gyártás"]
+PRINT2 --> PROD
 
-DEC --> DOC["irat összeállítás + PDF generálás + ÁVDH"]
+PROD --> HAND["Személyes átvétel"]
+PROD --> MAIL["Postázás és tértivevény"]
 
-DOC --> BNYH["BŰNYH nyomtatás és kézbesítés"]
-DOC --> ANY["ANY nyomtatás és kézbesítés"]
+DECISION --> MAIL
 
-BNYH --> PROD["ERHAB megszemélyesítés / gyártás"]
-ANY --> PROD
+HAND --> FINAL["Státusz lezárása"]
+MAIL --> FINAL
 
-PROD --> PERSON["személyes átadás"]
-PROD --> POST["postázás és tértivevény kezelés"]
-
-PERSON --> STATUS["ERHAB státuszállítás"]
-POST --> STATUS
-
+REGISTRY[(Központi járműnyilvántartás)]
+FINAL --> REGISTRY
     </pre>
     <hr>
 
